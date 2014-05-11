@@ -58,18 +58,22 @@ def insert_comment(comment):
 	db.comments.update(
 		{ '_id': { 'discussion_id': comment['discussion_id'], 'page': page } },
 		{ '$push': {
-		    'comments': {
-		      'author': comment['author'],
-		      'text'  : comment['text'],
-		      'ts'    : datetime.now()
+		  	'comments': {
+		  		'$each': [ {
+		  			'author': comment['author'],
+		      		'text'  : comment['text'],
+		      		'ts'    : datetime.now() } ],
+		      	'$position': 0
 		    }
 		  }
 		},
 		upsert = True)
 
-# drop_collections()
-insert_comment({
-	'discussion_id': get_discussion_id(),
-	'author': 'James Tan',
-	'text': 'This is my comment...'
-})
+drop_collections()
+
+for i in range(0,50):
+	insert_comment({
+		'discussion_id': get_discussion_id(),
+		'author': 'James Tan',
+		'text': 'This is my comment...'
+	})
