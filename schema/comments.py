@@ -8,19 +8,23 @@
 # Schema:
 #
 # (1) 'discussions' collection: {
-#   _id     : <ID>,
-#   comments: <NUMBER_OF_COMMENTS>
-# }
+#       _id     : <ID>,
+#       comments: <NUMBER_OF_COMMENTS>
+#      }
+#      - Typically small in size, thus avoid sharding.
 #
 # (2) 'comments' collection: {
-#   _id     : { discussion_id: <DISCUSSION_ID>, page: <PAGE> },
-#   comments: [
-#     { author: <AUTHOR>,
-#       text  : <TEXT>,
-#       ts    : <TIME_STAMP> },
-#     ...
-#   ]
-# }
+#       _id     : { discussion_id: <DISCUSSION_ID>, page: <PAGE> },
+#       comments: [
+#         { author: <AUTHOR>,
+#           text  : <TEXT>,
+#           ts    : <TIME_STAMP> },
+#           ...
+#       ]
+#     }
+#     - Shard only if necessary (e.g. for data size or performance)
+#     - Shard key: _id (it's already compound)
+#       - Downside: Hot shard due to ObjectId, if lots of new discussions
 
 from bson     import objectid
 from datetime import datetime
