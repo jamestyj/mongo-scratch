@@ -1,0 +1,47 @@
+#!/bin/bash -e
+
+SRC_DIR=../mongo-common
+DST_DIR=common
+
+function logGreen() {
+    local GREEN='\033[0;32m'
+    local NO_COLOR='\033[0m'
+    echo -e "${GREEN}** $*${NO_COLOR}"
+}
+
+function mount_common() {
+    if ! mount | grep -q $(pwd)/$DST_DIR; then
+        logGreen "Loop mounting $SRC_DIR/ to $DST_DIR/ (Docker doesn't like symlinks)"
+        mkdir -p $DST_DIR
+        sudo mount --bind $SRC_DIR $DST_DIR
+    fi
+}
+
+function umount_common() {
+    logGreen "Unmounting $DST_DIR/"
+    sudo umount -l $DST_DIR
+    rmdir $DST_DIR
+}
+
+function build_image() {
+    local name=$(basename $BUILD_DIR)
+
+    cd $BUILD_DIR
+    mount_common
+
+    cmd="docker build -t $name ."
+    logGreen "Running '$cmd'..."
+    $cmd
+
+    umount_common
+    logGreen "Built image '$name'"
+}
+
+if [ $# -ne 1 ]; then
+    >&2 echo "Usage: `basename $0` BUILD_DIR"
+    >&2 echo "  where BUILD_DIR contains the Dockerfile"
+    exit 1
+fi
+
+BUILD_DIR=$1
+build_image

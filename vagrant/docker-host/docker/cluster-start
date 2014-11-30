@@ -1,0 +1,22 @@
+#!/bin/bash -e
+
+function mongo_eval() {
+    mongo --quiet --eval "printjson($1)"
+}
+
+./build mongo-d
+
+echo
+
+declare -A MONGODS
+MONGODS=(["a"]=27017 ["b"]=27018 ["c"]=27019)
+LOGPATH=/var/log/mongodb
+for i in "${!MONGODS[@]}"; do
+    docker run -d --net=host -v $LOGPATH:$LOGPATH -v /data/mongod/s1-$i:/data/db --name "mongod-s1-$i" mongo-d \
+        --replSet s1 --port ${MONGODS["$i"]} --logpath $LOGPATH/mongod-s1-${i}.log --logappend
+done
+
+mongo_eval "rs.initiate()"
+sleep 3
+mongo_eval "rs.add('docker-host:27018')"
+mongo_eval "rs.add('docker-host:27019')"

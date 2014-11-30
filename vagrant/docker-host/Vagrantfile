@@ -1,0 +1,24 @@
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+  config.vm.define "docker-host".to_sym do |server|
+    server.vm.box = "chef/centos-7.0"
+
+    server.vm.provider "virtualbox" do |vb|
+      vb.name   = "docker-host"
+      vb.memory = 4*1024
+      vb.cpus   = 2
+
+      # Attach data volume
+      disk = 'disk.vdi'
+      vb.customize ["storagectl", :id, "--add", "sata", "--name", "SATA" , "--portcount", 1, "--hostiocache", "on"]
+      vb.customize ['createhd', '--filename', disk, '--size', 100*1024 ]
+      vb.customize ['storageattach', :id, '--storagectl', 'SATA', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', disk]
+    end
+
+    server.vm.hostname = "docker-host"
+    server.vm.provision :shell, path: "provision.sh"
+  end
+end

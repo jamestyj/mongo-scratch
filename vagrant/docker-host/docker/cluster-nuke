@@ -1,0 +1,12 @@
+#!/bin/bash
+
+containers=( a b c )
+for i in "${containers[@]}"; do
+    docker stop mongod-s1-$i
+done
+
+./clean-containers
+#./clean-images
+
+#docker ps -a
+#docker images

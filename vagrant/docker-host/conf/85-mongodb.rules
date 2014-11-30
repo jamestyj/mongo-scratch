@@ -1,0 +1,4 @@
+# http://docs.mongodb.org/manual/administration/production-notes/#recommended-configuration
+# http://docs.mongodb.org/manual/administration/production-notes/#scheduling-for-virtual-devices
+# http://www.kchodorow.com/blog/2012/05/10/thursday-5-diagnosing-high-readahead/
+ACTION=="add|change", KERNEL=="sdb", SUBSYSTEM=="block", ATTR{bdi/read_ahead_kb}="16", ATTR{queue/scheduler}="noop"
