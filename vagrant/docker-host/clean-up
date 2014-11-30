@@ -1,0 +1,3 @@
+#!/bin/bash
+
+rm -rf .vagrant "/Users/$USER/VirtualBox VMs/docker-host" disk.vdi

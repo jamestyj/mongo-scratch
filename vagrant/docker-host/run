@@ -1,0 +1,4 @@
+vagrant destroy -f && \
+vagrant up && \
+vagrant ssh -c 'cd docker && ./cluster-start' && \
+vagrant ssh

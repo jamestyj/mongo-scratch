@@ -1,0 +1,5 @@
+set background=dark
+set expandtab
+set hlsearch
+set shiftwidth=4
+set tabstop=4
