@@ -115,6 +115,9 @@ function setup_logging() {
     mkdir -p      /var/log/mongodb
     chown mongod: /var/log/mongodb
     cp /vagrant/conf/logrotate /etc/logrotate.d/mongodb
+
+    echo "tail -f /var/log/mongodb/*" > /home/vagrant/logs
+    chmod +x /home/vagrant/logs
 }
 
 setup_users
