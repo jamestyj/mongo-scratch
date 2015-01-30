@@ -11,6 +11,10 @@ software.
 See http://mms.mongodb.com/help-hosted/current/reference/api/ for details on
 the MMS API.
 
+Currently tested only on MMS On-Prem 1.5 on replica sets. Your mileage may
+vary. Please report bugs via Github Issues or better yet, fixes/patches via
+pull requests.
+
 ### Prerequisites
 
 In the MMS web UI:
