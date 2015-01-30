@@ -1,35 +1,29 @@
 #!/usr/bin/env bash
 #
-# Reference implementation in Bash to interact with the MongoDB Management
-# Service (MMS) REST API. Works for both host cloud version, On-Prem, and Ops
-# Manager.
+# Bash script that uses the MongoDB Management Service (MMS) REST API to
+# trigger a restore of the latest snapshot and downloads the resulting
+# tarballs. Supports MMS Cloud and On-Prem/OpsManager.
 #
-# Prerequisites:
-#script to download the last snapshot (tarball) from MMS Backup, for
-# the specified replica set.
-#
-# Dependencies:
-#
-#   - The goal here is to minimise dependencies as many production environments
-#     are locked down. Thus we avoid the need to install any other software or
-#     scripting languages or modules (e.g. Ruby, Python, Perl).
-#
-#   - The only dependency is on https://github.com/dominictarr/JSON.sh, a
-#     fairly small Bash script to help parse the JSON returned from the MMS
-#     REST API.
-#
-# See http://mms.mongodb.com/help-hosted/current/reference/api/ for details.
+# See https://github.com/jamestyj/mongo-scratch/tree/master/mrestore for
+# details.
 #
 # Version: 1.0.0
 # Author : James Tan <james.tan@mongodb.com>
 
 set -e
 
-# Default
 MMS_API_VERSION=1.0
-DOWNLOAD_DIR=backups
+DOWNLOAD_DIR=.
 
-# ----------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# <JSON.sh>
+# Adapted from https://github.com/dominictarr/JSON.sh/blob/master/JSON.sh
+
+throw() {
+  echo "$*" >&2
+  exit 1
+}
+
 JSON_tokenize () {
   local GREP
   local ESCAPE
@@ -139,125 +133,141 @@ JSON_parse_object () {
   esac
 }
 
-# ----------------------------------------------------------------------
+# </JSON.sh>
+# -------------------------------------------------------------------------
 
 usage() {
-    local self=`basename $0`
-    echo "Usage: $self PARAMS [OPTIONS]"
-    echo
-    echo "Required parameters:"
-    echo "  --user MMS_USER          MMS username, usually an email"
-    echo "  --api-key API_KEY        MMS API key (eg. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)"
-    echo "  --server-url MMS_URL     MMS server URL (eg. http://mms-server:8080)"
-    echo "  --group-id GROUP_ID      MMS group ID   (eg. 54c64146ae9fbe3d7f32c726)"
-    echo "  --cluster-id CLUSTER_ID  MMS cluster ID (eg. 54c641560cf294969781b5c3)"
-    echo
-    echo "Options:"
-    echo "  --download-dir DIR       Download directory. Default: '$DOWNLOAD_DIR'"
-    echo
-    echo "Miscellaneous:"
-    echo "  --help                   Show this help message"
+  local self=`basename $0`
+  echo "Usage: $self PARAMS [OPTIONS]"
+  echo
+  echo "Required parameters:"
+  echo "  --server-url MMS_URL     MMS server URL (eg. https://mms.mongodb.com)"
+  echo "  --user MMS_USER          MMS username, usually an email"
+  echo "  --api-key API_KEY        MMS API key (eg. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)"
+  echo "  --group-id GROUP_ID      MMS group ID   (eg. 54c64146ae9fbe3d7f32c726)"
+  echo "  --cluster-id CLUSTER_ID  MMS cluster ID (eg. 54c641560cf294969781b5c3)"
+  echo
+  echo "Options:"
+  echo "  --download-dir DIR       Download directory. Default: '$DOWNLOAD_DIR'"
+  echo
+  echo "Miscellaneous:"
+  echo "  --help                   Show this help message"
 }
 
 parse_options() {
-    [ $# -eq 0 ] && usage && exit 1
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            --user        ) shift; MMS_USER=$1;;
-            --api-key     ) shift; MMS_API_KEY=$1;;
-            --server-url  ) shift; MMS_SERVER_URL=$1;;
-            --group-id    ) shift; GROUP_ID=$1;;
-            --cluster-id  ) shift; CLUSTER_ID=$1;;
-            --download-dir) shift; DOWNLOAD_DIR=$1;;
-            -h|--help     ) usage; exit 0;;
-            *             ) echo "Unknown option(s): $*"; exit 1;;
-        esac
-        shift
-    done
-    [ "$MMS_USER"       = "" ] && echo "--user is not specified"       && exit 1;
-    [ "$MMS_API_KEY"    = "" ] && echo "--api-key is not specified"    && exit 1;
-    [ "$MMS_SERVER_URL" = "" ] && echo "--server-url is not specified" && exit 1;
-    [ "$GROUP_ID"       = "" ] && echo "--group-id is not specified"   && exit 1;
-    [ "$CLUSTER_ID"     = "" ] && echo "--cluster-id is not specified" && exit 1;
-    true
+  [ $# -eq 0 ] && usage && exit 1
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --server-url  ) shift; MMS_SERVER_URL=$1;;
+      --user        ) shift; MMS_USER=$1;;
+      --api-key     ) shift; MMS_API_KEY=$1;;
+      --group-id    ) shift; GROUP_ID=$1;;
+      --cluster-id  ) shift; CLUSTER_ID=$1;;
+      --download-dir) shift; DOWNLOAD_DIR=$1;;
+      -h|--help     ) usage; exit 0;;
+      *             ) echo "Unknown option(s): $*"; exit 1;;
+    esac
+    shift
+  done
+  [ "$MMS_USER"       = "" ] && echo "--user is not specified"       && exit 1;
+  [ "$MMS_API_KEY"    = "" ] && echo "--api-key is not specified"    && exit 1;
+  [ "$MMS_SERVER_URL" = "" ] && echo "--server-url is not specified" && exit 1;
+  [ "$GROUP_ID"       = "" ] && echo "--group-id is not specified"   && exit 1;
+  [ "$CLUSTER_ID"     = "" ] && echo "--cluster-id is not specified" && exit 1;
+  true
 }
 
 api_get() {
-    local url="groups/$GROUP_ID/clusters/$CLUSTER_ID/$1"
-    curl --fail --silent --show-error --digest -u "$MMS_USER:$MMS_API_KEY" \
-         "$MMS_SERVER_URL/api/public/v$MMS_API_VERSION/$url?pretty=true"
+  local url="groups/$GROUP_ID/clusters/$CLUSTER_ID/$1"
+  curl --fail --silent --show-error --digest -u "$MMS_USER:$MMS_API_KEY" \
+       "$MMS_SERVER_URL/api/public/v$MMS_API_VERSION/$url?pretty=true" 2>&1
 }
 
 api_post() {
-    local url="groups/$GROUP_ID/clusters/$CLUSTER_ID/$1"
-    local data=$2
-    curl --fail --silent --show-error --digest -u "$MMS_USER:$MMS_API_KEY" \
-         -X POST -H "Content-Type: application/json" --data "$data" \
-         "$MMS_SERVER_URL/api/public/v$MMS_API_VERSION/$url?pretty=true"
+  local url="groups/$GROUP_ID/clusters/$CLUSTER_ID/$1"
+  local data=$2
+  curl --fail --silent --show-error --digest -u "$MMS_USER:$MMS_API_KEY" \
+       -X POST -H "Content-Type: application/json" --data "$data" \
+       "$MMS_SERVER_URL/api/public/v$MMS_API_VERSION/$url?pretty=true"
 }
 
 get_val() {
-    local json=$1
-    local grep_field=$2
-    shift 2
-    local cut_args=$*
-    echo $json | JSON_tokenize | JSON_parse | grep "\[$grep_field\]" | cut $cut_args
+  local json=$1
+  local grep_field=$2
+  shift 2
+  local cut_args=$*
+  echo $json | JSON_tokenize | JSON_parse | grep "\[$grep_field\]" | cut $cut_args
 }
 
 get_latest_snapshot() {
-    echo
-    local res=$(api_get 'snapshots')
+  echo
+  local res=$(api_get 'snapshots')
+  echo "$res" | grep -q "curl: (52)" && echo "$res" && exit 1
 
-    SNAPSHOT_ID=$(           get_val "$res" '"results",0,"id"'                         -f6 -d'"')
-    local created_date=$(    get_val "$res" '"results",0,"created","date"'             -f8 -d'"')
-    local is_complete=$(     get_val "$res" '"results",0,"complete"'                   -f2)
-    local type_name=$(       get_val "$res" '"results",0,"parts",0,"typeName"'         -f8 -d'"')
-    local replica_set_name=$(get_val "$res" '"results",0,"parts",0,"replicaSetName"'   -f8 -d'"')
-    local mongodb_version=$( get_val "$res" '"results",0,"parts",0,"mongodVersion"'    -f8 -d'"')
-    local data_size=$(       get_val "$res" '"results",0,"parts",0,"dataSizeBytes"'    -f2)
-    local storage_size=$(    get_val "$res" '"results",0,"parts",0,"storageSizeBytes"' -f2)
-    local file_size=$(       get_val "$res" '"results",0,"parts",0,"fileSizeBytes"'    -f2)
+  SNAPSHOT_ID=$(       get_val "$res" '"results",0,"id"'                         -f6 -d'"')
+  local created_date=$(get_val "$res" '"results",0,"created","date"'             -f8 -d'"')
+  local is_complete=$( get_val "$res" '"results",0,"complete"'                   -f2)
+  local type_name=$(   get_val "$res" '"results",0,"parts",0,"typeName"'         -f8 -d'"')
+  local rs_name=$(     get_val "$res" '"results",0,"parts",0,"replicaSetName"'   -f8 -d'"')
+  local mongodb_ver=$( get_val "$res" '"results",0,"parts",0,"mongodVersion"'    -f8 -d'"')
+  local data_size=$(   get_val "$res" '"results",0,"parts",0,"dataSizeBytes"'    -f2)
+  local storage_size=$(get_val "$res" '"results",0,"parts",0,"storageSizeBytes"' -f2)
+  local file_size=$(   get_val "$res" '"results",0,"parts",0,"fileSizeBytes"'    -f2)
 
-    echo "Latest snapshot ID: $SNAPSHOT_ID"
-    echo "Created on        : $created_date"
-    echo "Complete?         : $is_complete"
-    echo "Type name         : $type_name"
-    echo "Replica set name  : $replica_set_name"
-    echo "MongoDB version   : $mongodb_version"
-    echo "Data size         : $data_size bytes"
-    echo "Storage size      : $storage_size bytes"
-    echo "File size         : $file_size bytes"
+  echo "Latest snapshot ID: $SNAPSHOT_ID"
+  echo "Created on        : $created_date"
+  echo "Complete?         : $is_complete"
+  echo "Type name         : $type_name"
+  echo "Replica set name  : $rs_name"
+  echo "MongoDB version   : $mongodb_ver"
+  echo "Data size         : $(format_size $data_size)"
+  echo "Storage size      : $(format_size $storage_size)"
+  echo "File size         : $(format_size $file_size) (uncompressed)"
 }
 
 restore_snapshot() {
-    echo
-    local res=$(api_post 'restoreJobs' "{\"snapshotId\": \"$SNAPSHOT_ID\"}")
-    RESTORE_ID=$(get_val "$res" '"results",0,"id"' -f6 -d'"')
-    echo "Snapshot restore job ID: $RESTORE_ID"
+  echo
+  local res=$(api_post 'restoreJobs' "{\"snapshotId\": \"$SNAPSHOT_ID\"}")
+  RESTORE_ID=$(get_val "$res" '"results",0,"id"' -f6 -d'"')
+  echo "Snapshot restore job ID: $RESTORE_ID"
 }
 
 wait_for_restore() {
-    echo -n "Waiting for restore job..."
+  echo -n "Waiting for restore job..."
 
-    # Possible values are: FINISHED IN_PROGRESS BROKEN KILLED
-    local job_status="IN_PROGRESS"
-    while [ "$job_status" = "IN_PROGRESS" ]; do
-        sleep 1
-        echo -n '.'
-        local res=$(api_get "restoreJobs/$RESTORE_ID")
-        job_status=$(get_val "$res" '"statusName"' -f4 -d'"')
-    done
-    echo
-    echo "Job status: $job_status"
+  # Possible values are: FINISHED IN_PROGRESS BROKEN KILLED
+  local job_status="IN_PROGRESS"
+  while [ "$job_status" = "IN_PROGRESS" ]; do
+    sleep 1
+    echo -n '.'
+    local res=$(api_get "restoreJobs/$RESTORE_ID")
+    job_status=$(get_val "$res" '"statusName"' -f4 -d'"')
+  done
+  echo
+  echo "Job status: $job_status"
 
-    DOWNLOAD_URL=$(get_val "$res" '"delivery","url"' -f6 -d'"')
+  DOWNLOAD_URL=$(get_val "$res" '"delivery","url"' -f6 -d'"')
 }
 
 download() {
-    echo
-    echo "Downloading restore tarball(s) to $DOWNLOAD_DIR/..."
-    mkdir -p "$DOWNLOAD_DIR"
-    wget -P "$DOWNLOAD_DIR" $DOWNLOAD_URL
+  echo
+  echo "Downloading restore tarball(s) to $DOWNLOAD_DIR/..."
+  mkdir -p "$DOWNLOAD_DIR"
+  cd "$DOWNLOAD_DIR"
+  curl -OL $DOWNLOAD_URL
+  cd - >/dev/null
+  local file="$DOWNLOAD_DIR/$(basename $DOWNLOAD_URL)"
+  local size=$((`du -k "$file" | cut -f1` * 1024))
+  echo
+  echo "Wrote to '$file' ($(format_size $size))"
+}
+
+format_size() {
+  !(echo "1" | bc &>/dev/null) && echo "$1 bytes" && return
+  [ $1 -gt $((1024**4)) ] && echo "$(bc <<< "scale=3; $1/1024^4") TB" && return
+  [ $1 -gt $((1024**3)) ] && echo "$(bc <<< "scale=2; $1/1024^3") GB" && return
+  [ $1 -gt $((1024**2)) ] && echo "$(bc <<< "scale=1; $1/1024^2") MB" && return
+  [ $1 -gt $((1024**1)) ] && echo "$(bc <<< "scale=0; $1/1024 1") KB" && return
 }
 
 parse_options $*
