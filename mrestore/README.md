@@ -8,21 +8,21 @@ It is intended to have as few dependencies as possible and thus should work on
 most Linux and Mac OS environments without the need to install any additional
 software.
 
-For details on the MMS API, see
-http://mms.mongodb.com/help-hosted/current/reference/api/.
+See http://mms.mongodb.com/help-hosted/current/reference/api/ for details on
+the MMS API.
 
 ### Prerequisites
 
 In the MMS web UI:
 
-#. Enable Public API for the MMS group to restore from.
-#. Generate an API key.
-#. Whitelist the IP address from which `mrestore` is run.
-#. Go to the URL of the replica set or cluster that you want to restore, which
-   should be in the following form:
-   `https://mms.mongodb.com/host/detail/XXXXXXX/YYYYYYY`.
-   - The group ID is `XXXXXXX`.
-   - The cluster ID is `YYYYYYY`.
+  1. Enable Public API for the MMS group to restore from
+  2. Generate an API key
+  3. Whitelist the IP address from which `mrestore` is run
+  4. Go to the URL of the replica set or cluster that you want to restore,
+     which should be in the following form:
+     `https://mms.mongodb.com/host/detail/XXXXXXX/YYYYYYY`
+     - The group ID is `XXXXXXX`
+     - The cluster ID is `YYYYYYY`
 
 ### Usage
 
