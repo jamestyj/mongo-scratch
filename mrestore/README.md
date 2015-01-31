@@ -13,6 +13,7 @@ software.
 Currently tested only on MMS On-Prem 1.5. Your mileage may vary. Please report
 bugs via Github Issues or better yet, send fixes and patches via pull requests.
 
+
 ### Prerequisites
 
 In the MMS web UI:
@@ -25,6 +26,10 @@ In the MMS web UI:
      `https://mms.mongodb.com/host/detail/XXXXXXX/YYYYYYY`
      - The group ID is `XXXXXXX`
      - The cluster ID is `YYYYYYY`
+
+For details, refer to the MMS [API docs]
+(https://docs.mms.mongodb.com/tutorial/use-mms-public-api/).
+
 
 ### Usage
 
