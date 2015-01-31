@@ -7,13 +7,14 @@
 # See https://github.com/jamestyj/mongo-scratch/tree/master/mrestore for
 # details.
 #
-# Version: 1.0.0
+# Version: 1.1.0
 # Author : James Tan <james.tan@mongodb.com>
 
 set -e
 
 MMS_API_VERSION=1.0
-DOWNLOAD_DIR=.
+OUT_DIR=.
+TIMEOUT=5
 
 # -------------------------------------------------------------------------
 # <JSON.sh>
@@ -148,7 +149,8 @@ usage() {
   echo "  --cluster-id CLUSTER_ID  MMS cluster ID (eg. 54c641560cf294969781b5c3)"
   echo
   echo "Options:"
-  echo "  --download-dir DIR       Download directory. Default: '$DOWNLOAD_DIR'"
+  echo "  --out-dir DIRECTORY      Download directory. Default: '$OUT_DIR'"
+  echo "  --timeout TIMEOUT_SECS   Connection timeout. Default: $TIMEOUT"
   echo
   echo "Miscellaneous:"
   echo "  --help                   Show this help message"
@@ -158,37 +160,39 @@ parse_options() {
   [ $# -eq 0 ] && usage && exit 1
   while [ $# -gt 0 ]; do
     case "$1" in
-      --server-url  ) shift; MMS_SERVER_URL=$1;;
-      --user        ) shift; MMS_USER=$1;;
-      --api-key     ) shift; MMS_API_KEY=$1;;
-      --group-id    ) shift; GROUP_ID=$1;;
-      --cluster-id  ) shift; CLUSTER_ID=$1;;
-      --download-dir) shift; DOWNLOAD_DIR=$1;;
-      -h|--help     ) usage; exit 0;;
-      *             ) echo "Unknown option(s): $*"; exit 1;;
+      --server-url) shift; MMS_SERVER_URL=$1;;
+      --user      ) shift; MMS_USER=$1;;
+      --api-key   ) shift; MMS_API_KEY=$1;;
+      --group-id  ) shift; GROUP_ID=$1;;
+      --cluster-id) shift; CLUSTER_ID=$1;;
+      --out-dir   ) shift; OUT_DIR=$1;;
+      --timeout   ) shift; TIMEOUT=$1;;
+      -h|--help   ) usage; exit 0;;
+      *           ) echo "Unknown option(s): $*"; exit 1;;
     esac
-    shift
+    shift || true
   done
   [ "$MMS_USER"       = "" ] && echo "--user is not specified"       && exit 1;
   [ "$MMS_API_KEY"    = "" ] && echo "--api-key is not specified"    && exit 1;
   [ "$MMS_SERVER_URL" = "" ] && echo "--server-url is not specified" && exit 1;
   [ "$GROUP_ID"       = "" ] && echo "--group-id is not specified"   && exit 1;
   [ "$CLUSTER_ID"     = "" ] && echo "--cluster-id is not specified" && exit 1;
-  true
+
+  CURL_OPTS="--connect-timeout $TIMEOUT --max-time $TIMEOUT --fail --silent --show-error --digest"
 }
 
 api_get() {
   local url="groups/$GROUP_ID/clusters/$CLUSTER_ID/$1"
-  curl --fail --silent --show-error --digest -u "$MMS_USER:$MMS_API_KEY" \
-       "$MMS_SERVER_URL/api/public/v$MMS_API_VERSION/$url?pretty=true" 2>&1
+  curl $CURL_OPTS -u "$MMS_USER:$MMS_API_KEY" \
+       "$MMS_SERVER_URL/api/public/v$MMS_API_VERSION/$url" 2>&1
 }
 
 api_post() {
   local url="groups/$GROUP_ID/clusters/$CLUSTER_ID/$1"
   local data=$2
-  curl --fail --silent --show-error --digest -u "$MMS_USER:$MMS_API_KEY" \
+  curl  $CURL_OPTS -u "$MMS_USER:$MMS_API_KEY" \
        -X POST -H "Content-Type: application/json" --data "$data" \
-       "$MMS_SERVER_URL/api/public/v$MMS_API_VERSION/$url?pretty=true"
+       "$MMS_SERVER_URL/api/public/v$MMS_API_VERSION/$url" 2>&1
 }
 
 get_val() {
@@ -200,9 +204,18 @@ get_val() {
 }
 
 get_latest_snapshot() {
-  echo
   local res=$(api_get 'snapshots')
-  echo "$res" | grep -q "curl: (52)" && echo "$res" && exit 1
+  if echo "$res" | grep -q "curl: ("; then
+    echo "$res"
+    if echo "$res" | grep -q ": 404"; then
+      echo "ERROR: Ensure that the group and cluster IDs are correct"
+    elif echo "$res" | grep -q ": 401"; then
+      echo "ERROR: Ensure that the user and API key are correct"
+    else
+      echo "ERROR: Can't reach MMS at $MMS_SERVER_URL"
+    fi
+    exit 1
+  fi
 
   SNAPSHOT_ID=$(       get_val "$res" '"results",0,"id"'                         -f6 -d'"')
   local created_date=$(get_val "$res" '"results",0,"created","date"'             -f8 -d'"')
@@ -213,6 +226,8 @@ get_latest_snapshot() {
   local data_size=$(   get_val "$res" '"results",0,"parts",0,"dataSizeBytes"'    -f2)
   local storage_size=$(get_val "$res" '"results",0,"parts",0,"storageSizeBytes"' -f2)
   local file_size=$(   get_val "$res" '"results",0,"parts",0,"fileSizeBytes"'    -f2)
+
+  [ "$SNAPSHOT_ID" = "" ] && echo "No snapshots found" && exit 1
 
   echo "Latest snapshot ID: $SNAPSHOT_ID"
   echo "Created on        : $created_date"
@@ -228,6 +243,15 @@ get_latest_snapshot() {
 restore_snapshot() {
   echo
   local res=$(api_post 'restoreJobs' "{\"snapshotId\": \"$SNAPSHOT_ID\"}")
+  if echo "$res" | grep -q "curl: ("; then
+    echo "$res"
+    if echo "$res" | grep -q ": 403"; then
+      echo "ERROR: Ensure that this IP address is whitelisted in MMS"
+    else
+      echo "ERROR: Can't reach MMS at $MMS_SERVER_URL"
+    fi
+    exit 1
+  fi
   RESTORE_ID=$(get_val "$res" '"results",0,"id"' -f6 -d'"')
   echo "Snapshot restore job ID: $RESTORE_ID"
 }
@@ -238,7 +262,7 @@ wait_for_restore() {
   # Possible values are: FINISHED IN_PROGRESS BROKEN KILLED
   local job_status="IN_PROGRESS"
   while [ "$job_status" = "IN_PROGRESS" ]; do
-    sleep 1
+    sleep 3
     echo -n '.'
     local res=$(api_get "restoreJobs/$RESTORE_ID")
     job_status=$(get_val "$res" '"statusName"' -f4 -d'"')
@@ -251,12 +275,12 @@ wait_for_restore() {
 
 download() {
   echo
-  echo "Downloading restore tarball(s) to $DOWNLOAD_DIR/..."
-  mkdir -p "$DOWNLOAD_DIR"
-  cd "$DOWNLOAD_DIR"
+  echo "Downloading restore tarball(s) to $OUT_DIR/..."
+  mkdir -p "$OUT_DIR"
+  cd "$OUT_DIR"
   curl -OL $DOWNLOAD_URL
   cd - >/dev/null
-  local file="$DOWNLOAD_DIR/$(basename $DOWNLOAD_URL)"
+  local file="$OUT_DIR/$(basename $DOWNLOAD_URL)"
   local size=$((`du -k "$file" | cut -f1` * 1024))
   echo
   echo "Wrote to '$file' ($(format_size $size))"

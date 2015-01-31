@@ -1,15 +1,14 @@
 # mrestore
 
-Bash script that uses the MongoDB Management Service (MMS) REST API to trigger
-a restore of the latest snapshot and downloads the resulting tarballs. Supports
+Bash script that uses the MongoDB Management Service ([MMS]
+(http://mms.mongodb.com)) [REST API]
+(http://mms.mongodb.com/help-hosted/current/reference/api/) to trigger a
+restore of the latest snapshot and downloads the resulting tarballs. Supports
 MMS Cloud and On-Prem/OpsManager.
 
 It is intended to have as few dependencies as possible and thus should work on
 most Linux and Mac OS environments without the need to install any additional
 software.
-
-See http://mms.mongodb.com/help-hosted/current/reference/api/ for details on
-the MMS API.
 
 Currently tested only on MMS On-Prem 1.5 on replica sets. Your mileage may
 vary. Please report bugs via Github Issues or better yet, fixes/patches via
@@ -41,10 +40,12 @@ In the MMS web UI:
       --cluster-id CLUSTER_ID  MMS cluster ID (eg. 54c641560cf294969781b5c3)
 
     Options:
-      --download-dir DIR       Download directory. Default: '.'
+      --out-dir DIRECTORY      Download directory. Default: '.'
+      --timeout TIMEOUT_SECS   Connection timeout. Default: 5
 
     Miscellaneous:
       --help                   Show this help message
+
 
 ### Sample output
 
@@ -74,3 +75,5 @@ In the MMS web UI:
     100 21.2M    0 21.2M    0     0   620k      0 --:--:--  0:00:35 --:--:--  565k
 
     Wrote to './54c64146ae9fbe3d7f32c726-mms-app-1422591622.tar.gz' (21.2 MB)
+
+Note that any existing files with the same name will be overwritten.
