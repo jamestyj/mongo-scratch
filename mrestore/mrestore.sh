@@ -182,13 +182,13 @@ parse_options() {
 }
 
 api_get() {
-  local url="groups/$GROUP_ID/clusters/$CLUSTER_ID/$1"
+  local url="groups/$GROUP_ID/clusters/$CLUSTER_ID$1"
   curl $CURL_OPTS -u "$MMS_USER:$MMS_API_KEY" \
        "$MMS_SERVER_URL/api/public/v$MMS_API_VERSION/$url" 2>&1
 }
 
 api_post() {
-  local url="groups/$GROUP_ID/clusters/$CLUSTER_ID/$1"
+  local url="groups/$GROUP_ID/clusters/$CLUSTER_ID$1"
   local data=$2
   curl  $CURL_OPTS -u "$MMS_USER:$MMS_API_KEY" \
        -X POST -H "Content-Type: application/json" --data "$data" \
@@ -203,8 +203,8 @@ get_val() {
   echo $json | JSON_tokenize | JSON_parse | grep "\[$grep_field\]" | cut $cut_args
 }
 
-get_latest_snapshot() {
-  local res=$(api_get 'snapshots')
+get_cluster_info() {
+  local res=$(api_get)
   if echo "$res" | grep -q "curl: ("; then
     echo "$res"
     if echo "$res" | grep -q ": 404"; then
@@ -217,32 +217,69 @@ get_latest_snapshot() {
     exit 1
   fi
 
+  TYPE_NAME=$(get_val "$res" '"typeName"' -f4 -d'"')
+  case "$TYPE_NAME" in
+    "REPLICA_SET")
+      local rs_name=$(get_val "$res" '"replicaSetName"' -f4 -d'"')
+      echo "Cluster type    : $TYPE_NAME"
+      echo "Replica set name: $rs_name";;
+    "SHARDED_REPLICA_SET")
+      local cluster_name=$(get_val "$res" '"clusterName"' -f4 -d'"')
+      echo "Cluster type: $TYPE_NAME"
+      echo "Cluster name: $cluster_name";;
+    *)
+      echo "ERROR: Unknown cluster type"
+      exit 1;;
+  esac
+  echo
+}
+
+get_latest_snapshot() {
+  local res=$(api_get '/snapshots')
+  if echo "$res" | grep -q "curl: ("; then
+    echo "$res"
+    echo "ERROR: Can't reach MMS at $MMS_SERVER_URL"
+    exit 1
+  fi
+
   SNAPSHOT_ID=$(       get_val "$res" '"results",0,"id"'                         -f6 -d'"')
   local created_date=$(get_val "$res" '"results",0,"created","date"'             -f8 -d'"')
   local is_complete=$( get_val "$res" '"results",0,"complete"'                   -f2)
-  local type_name=$(   get_val "$res" '"results",0,"parts",0,"typeName"'         -f8 -d'"')
-  local rs_name=$(     get_val "$res" '"results",0,"parts",0,"replicaSetName"'   -f8 -d'"')
-  local mongodb_ver=$( get_val "$res" '"results",0,"parts",0,"mongodVersion"'    -f8 -d'"')
-  local data_size=$(   get_val "$res" '"results",0,"parts",0,"dataSizeBytes"'    -f2)
-  local storage_size=$(get_val "$res" '"results",0,"parts",0,"storageSizeBytes"' -f2)
-  local file_size=$(   get_val "$res" '"results",0,"parts",0,"fileSizeBytes"'    -f2)
 
   [ "$SNAPSHOT_ID" = "" ] && echo "No snapshots found" && exit 1
-
   echo "Latest snapshot ID: $SNAPSHOT_ID"
   echo "Created on        : $created_date"
   echo "Complete?         : $is_complete"
-  echo "Type name         : $type_name"
-  echo "Replica set name  : $rs_name"
-  echo "MongoDB version   : $mongodb_ver"
-  echo "Data size         : $(format_size $data_size)"
-  echo "Storage size      : $(format_size $storage_size)"
-  echo "File size         : $(format_size $file_size) (uncompressed)"
+
+  local part=0
+  while :; do
+    local type_name=$(   get_val "$res" "\"results\",0,\"parts\",$part,\"typeName\""         -f8 -d'"')
+    local rs_name=$(     get_val "$res" "\"results\",0,\"parts\",$part,\"replicaSetName\""   -f8 -d'"')
+    local mongodb_ver=$( get_val "$res" "\"results\",0,\"parts\",$part,\"mongodVersion\""    -f8 -d'"')
+    local data_size=$(   get_val "$res" "\"results\",0,\"parts\",$part,\"dataSizeBytes\""    -f2)
+    local storage_size=$(get_val "$res" "\"results\",0,\"parts\",$part,\"storageSizeBytes\"" -f2)
+    local file_size=$(   get_val "$res" "\"results\",0,\"parts\",$part,\"fileSizeBytes\""    -f2)
+
+    [ ! "$type_name" ] && break
+
+    echo
+    if [ "$TYPE_NAME" = "SHARDED_REPLICA_SET" ]; then
+      echo "Part              : $part"
+      echo "Type name         : $type_name"
+      [ "$rs_name" ] && \
+      echo "Replica set name  : $rs_name"
+    fi
+    echo "MongoDB version   : $mongodb_ver"
+    echo "Data size         : $(format_size $data_size)"
+    echo "Storage size      : $(format_size $storage_size)"
+    echo "File size         : $(format_size $file_size) (uncompressed)"
+    ((part++))
+  done
 }
 
 restore_snapshot() {
   echo
-  local res=$(api_post 'restoreJobs' "{\"snapshotId\": \"$SNAPSHOT_ID\"}")
+  local res=$(api_post '/restoreJobs' "{\"snapshotId\": \"$SNAPSHOT_ID\"}")
   if echo "$res" | grep -q "curl: ("; then
     echo "$res"
     if echo "$res" | grep -q ": 403"; then
@@ -252,38 +289,76 @@ restore_snapshot() {
     fi
     exit 1
   fi
-  RESTORE_ID=$(get_val "$res" '"results",0,"id"' -f6 -d'"')
-  echo "Snapshot restore job ID: $RESTORE_ID"
+  case "$TYPE_NAME" in
+    "REPLICA_SET")
+      RESTORE_ID=$(get_val "$res" '"results",0,"id"' -f6 -d'"')
+      echo "Restore job ID: $RESTORE_ID";;
+    "SHARDED_REPLICA_SET")
+      BATCH_ID=$(get_val "$res" '"results",0,"batchId"' -f6 -d'"')
+      echo "Batch ID: $BATCH_ID";;
+  esac
 }
 
 wait_for_restore() {
   echo -n "Waiting for restore job..."
 
-  # Possible values are: FINISHED IN_PROGRESS BROKEN KILLED
-  local job_status="IN_PROGRESS"
-  while [ "$job_status" = "IN_PROGRESS" ]; do
-    sleep 3
-    echo -n '.'
-    local res=$(api_get "restoreJobs/$RESTORE_ID")
-    job_status=$(get_val "$res" '"statusName"' -f4 -d'"')
-  done
-  echo
-  echo "Job status: $job_status"
+  # Possible status values are: FINISHED IN_PROGRESS BROKEN KILLED
+  local part=0
+  while :; do
+    case "$TYPE_NAME" in
+      "REPLICA_SET")
+        local res=$(api_get "/restoreJobs/$RESTORE_ID")
+        local status=$(get_val "$res" '"statusName"' -f4 -d'"')
+        if [ "$status" != "IN_PROGRESS" ]; then
+          echo
+          echo "Status: $status"
+          [ "$status" != "FINISHED" ] && exit 1
+          DOWNLOAD_URLS=$(get_val "$res" '"delivery","url"' -f6 -d'"')
+          break
+        fi
+        ;;
+      "SHARDED_REPLICA_SET")
+        # Wait for all parts in the batch to finish
+        local res=$(api_get "/restoreJobs?batchId=$BATCH_ID")
+        local status="IN_PROGRESS"
+        while :; do
+          local part_status=$(get_val "$res" "\"results\",$part,\"statusName\"" -f6 -d'"')
+          [ ! "$part_status" ] && status="FINISHED" && break
+          [ "$part_status" = "IN_PROGRESS" ] && break
+          ((part++))
+        done
 
-  DOWNLOAD_URL=$(get_val "$res" '"delivery","url"' -f6 -d'"')
+        if [ "$status" != "IN_PROGRESS" ]; then
+          echo
+          echo "Status: $status"
+          local part=0
+          while :; do
+            local url=$(get_val "$res" "\"results\",$part,\"delivery\",\"url\"" -f8 -d'"')
+            [ ! "$url" ] && break
+            DOWNLOAD_URLS+=($url)
+            ((part++))
+          done
+          break
+        fi
+        ;;
+    esac
+    sleep 1; echo -n '.'
+  done
 }
 
 download() {
   echo
   echo "Downloading restore tarball(s) to $OUT_DIR/..."
   mkdir -p "$OUT_DIR"
-  cd "$OUT_DIR"
-  curl -OL $DOWNLOAD_URL
-  cd - >/dev/null
-  local file="$OUT_DIR/$(basename $DOWNLOAD_URL)"
-  local size=$((`du -k "$file" | cut -f1` * 1024))
-  echo
-  echo "Wrote to '$file' ($(format_size $size))"
+  for url in "${DOWNLOAD_URLS[@]}"; do
+    cd "$OUT_DIR"
+    curl -OL $url
+    cd - >/dev/null
+    local file="$OUT_DIR/$(basename $url)"
+    local size=$((`du -k "$file" | cut -f1` * 1024))
+    echo "Wrote to '$file' ($(format_size $size))"
+    echo
+  done
 }
 
 format_size() {
@@ -291,10 +366,11 @@ format_size() {
   [ $1 -gt $((1024**4)) ] && echo "$(bc <<< "scale=3; $1/1024^4") TB" && return
   [ $1 -gt $((1024**3)) ] && echo "$(bc <<< "scale=2; $1/1024^3") GB" && return
   [ $1 -gt $((1024**2)) ] && echo "$(bc <<< "scale=1; $1/1024^2") MB" && return
-  [ $1 -gt $((1024**1)) ] && echo "$(bc <<< "scale=0; $1/1024 1") KB" && return
+  [ $1 -gt $((1024**1)) ] && echo "$(bc <<< "scale=0; $1/1024^1") KB" && return
 }
 
 parse_options $*
+get_cluster_info
 get_latest_snapshot
 restore_snapshot
 wait_for_restore
