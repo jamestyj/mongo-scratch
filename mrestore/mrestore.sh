@@ -7,7 +7,7 @@
 # See https://github.com/jamestyj/mongo-scratch/tree/master/mrestore for
 # details.
 #
-# Version: 1.1.0
+# Version: 1.2.0
 # Author : James Tan <james.tan@mongodb.com>
 
 set -e
