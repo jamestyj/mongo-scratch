@@ -1,0 +1,8 @@
+#"!/bin/bash
+
+DB_NAME=mydb
+dd if=/dev/zero bs=1m count=16 of=$DB_NAME.ns
+for i in {0..2}; do
+    dd if=/dev/zero bs=1m count=2047 of=$DB_NAME.$i
+done
+chmod 600 $DB_NAME.*
