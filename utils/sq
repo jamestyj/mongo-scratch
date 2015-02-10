@@ -1,0 +1,6 @@
+#!/bin/bash
+
+grep '[0-9]\{3,100\}ms$' | \
+    egrep -v 'getmore local.oplog.rs query|slaveTracking|dbstats|command local|command admin|\[journal\]|\[TTLMonitor\]|LockPinger' | \
+    awk '{print $NF": "$0}' | \
+    sort -nr

@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+
+mongods = {}
+`pgrep -lf mongod`.each_line do |line|
+    if line =~ /--port (\d+)/
+        mongods[$1] = line.split(' ', 2)[0]
+    end
+end
+
+pid = mongods[mongods.keys.sort.first]
+puts "Killing PID #{pid}"
+`kill #{pid}`
+

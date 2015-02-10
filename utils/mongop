@@ -1,0 +1,1 @@
+mongo-connect `mongo-connect --quiet ~/bin/find_primary.js`

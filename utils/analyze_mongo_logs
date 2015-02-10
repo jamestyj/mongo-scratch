@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]; then
+    echo "usage: $0 <mongod.log>"
+    exit 1
+fi
+
+LOG="$1"
+
+echo "** Running 'mloginfo --distinct --verbose $LOG > $LOG.mloginfo-distinct'..."
+mloginfo --distinct --verbose $LOG > $LOG.mloginfo-distinct
+
+echo "** Running 'mloginfo --queries $LOG > $LOG.mloginfo-queries'..."
+mloginfo --no-progressbar --queries $LOG > $LOG.mloginfo-queries
+
+echo "** Running 'cat $LOG | sq > $LOG.sq'..."
+cat $LOG | sq > $LOG.sq 2>&1 &
+
+#echo "** Running 'fragmented_collections $LOG'"
+fragmented_collections $LOG > $LOG.fragmented_collections
+
+#mplotqueries $LOG
+echo "** Running 'mlogvis $LOG'"
+mlogvis $LOG
