@@ -1,0 +1,107 @@
+[vagrant@docker-host mongoperf]$ echo "{nThreads:32,fileSizeMB:1000,r:true,w:true}" | docker run -i --sig-proxy=false -v ~/tmp:/tmp mongoperf
+mongoperf
+use -h for help
+parsed options:
+{ nThreads: 32, fileSizeMB: 1000, r: true, w: true }
+creating test file size:1000MB ...
+testing...
+optoins:{ nThreads: 32, fileSizeMB: 1000, r: true, w: true }
+wthr 32
+new thread, total running : 1
+read:1 write:1
+1273 ops/sec 4 MB/sec
+1242 ops/sec 4 MB/sec
+1178 ops/sec 4 MB/sec
+1205 ops/sec 4 MB/sec
+1193 ops/sec 4 MB/sec
+1217 ops/sec 4 MB/sec
+1217 ops/sec 4 MB/sec
+1216 ops/sec 4 MB/sec
+new thread, total running : 2
+read:1 write:1
+2437 ops/sec 9 MB/sec
+2702 ops/sec 10 MB/sec
+2546 ops/sec 9 MB/sec
+2540 ops/sec 9 MB/sec
+2630 ops/sec 10 MB/sec
+2627 ops/sec 10 MB/sec
+2589 ops/sec 10 MB/sec
+2630 ops/sec 10 MB/sec
+new thread, total running : 4
+read:1 write:1
+read:1 write:1
+2575 ops/sec 10 MB/sec
+2465 ops/sec 9 MB/sec
+2558 ops/sec 9 MB/sec
+2558 ops/sec 9 MB/sec
+2544 ops/sec 9 MB/sec
+2500 ops/sec 9 MB/sec
+2608 ops/sec 10 MB/sec
+2356 ops/sec 9 MB/sec
+new thread, total running : 8
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+2471 ops/sec 9 MB/sec
+3081 ops/sec 12 MB/sec
+3027 ops/sec 11 MB/sec
+2794 ops/sec 10 MB/sec
+3077 ops/sec 12 MB/sec
+^[[A3108 ops/sec 12 MB/sec
+3131 ops/sec 12 MB/sec
+3139 ops/sec 12 MB/sec
+read:1 write:1
+read:1 write:1
+read:1 write:1
+new thread, total running : 16
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+3031 ops/sec 11 MB/sec
+3376 ops/sec 13 MB/sec
+3384 ops/sec 13 MB/sec
+2816 ops/sec 11 MB/sec
+2885 ops/sec 11 MB/sec
+3341 ops/sec 13 MB/sec
+3297 ops/sec 12 MB/sec
+3313 ops/sec 12 MB/sec
+new thread, total running : 32
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+3272 ops/sec 12 MB/sec
+3196 ops/sec 12 MB/sec
+3385 ops/sec 13 MB/sec
+3255 ops/sec 12 MB/sec
+3396 ops/sec 13 MB/sec
+3391 ops/sec 13 MB/sec
+3368 ops/sec 13 MB/sec
+3242 ops/sec 12 MB/sec
+3390 ops/sec 13 MB/sec
+3349 ops/sec 13 MB/sec
+3348 ops/sec 13 MB/sec
+3364 ops/sec 13 MB/sec
+3255 ops/sec 12 MB/sec
+3342 ops/sec 13 MB/sec
+3442 ops/sec 13 MB/sec
+3310 ops/sec 12 MB/sec
+3252 ops/sec 12 MB/sec
+3334 ops/sec 13 MB/sec
+3316 ops/sec 12 MB/sec
+3205 ops/sec 12 MB/sec

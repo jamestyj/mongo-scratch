@@ -1,0 +1,176 @@
+[vagrant@docker-host mongoperf]$ echo "{nThreads:32,fileSizeMB:1000,r:true,w:true}" | docker run -i --sig-proxy=false mongoperf
+mongoperf
+use -h for help
+parsed options:
+{ nThreads: 32, fileSizeMB: 1000, r: true, w: true }
+creating test file size:1000MB ...
+testing...
+optoins:{ nThreads: 32, fileSizeMB: 1000, r: true, w: true }
+wthr 32
+new thread, total running : 1
+read:1 write:1
+877 ops/sec 3 MB/sec
+928 ops/sec 3 MB/sec
+920 ops/sec 3 MB/sec
+909 ops/sec 3 MB/sec
+903 ops/sec 3 MB/sec
+923 ops/sec 3 MB/sec
+941 ops/sec 3 MB/sec
+906 ops/sec 3 MB/sec
+new thread, total running : 2
+read:1 write:1
+1211 ops/sec 4 MB/sec
+1158 ops/sec 4 MB/sec
+1172 ops/sec 4 MB/sec
+1147 ops/sec 4 MB/sec
+1167 ops/sec 4 MB/sec
+1152 ops/sec 4 MB/sec
+1166 ops/sec 4 MB/sec
+1165 ops/sec 4 MB/sec
+new thread, total running : 4
+read:1 write:1
+read:1 write:1
+1194 ops/sec 4 MB/sec
+1163 ops/sec 4 MB/sec
+1162 ops/sec 4 MB/sec
+1136 ops/sec 4 MB/sec
+1171 ops/sec 4 MB/sec
+1176 ops/sec 4 MB/sec
+1176 ops/sec 4 MB/sec
+1016 ops/sec 3 MB/sec
+new thread, total running : 8
+read:1read:1 write:1 write:1
+
+read:1 write:1
+read:1 write:1
+1112 ops/sec 4 MB/sec
+1161 ops/sec 4 MB/sec
+1174 ops/sec 4 MB/sec
+1174 ops/sec 4 MB/sec
+1176 ops/sec 4 MB/sec
+1166 ops/sec 4 MB/sec
+1144 ops/sec 4 MB/sec
+1172 ops/sec 4 MB/sec
+new thread, total running : 16
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+1156 ops/sec 4 MB/sec
+1178 ops/sec 4 MB/sec
+1160 ops/sec 4 MB/sec
+1161 ops/sec 4 MB/sec
+1146 ops/sec 4 MB/sec
+1207 ops/sec 4 MB/sec
+1214 ops/sec 4 MB/sec
+1235 ops/sec 4 MB/sec
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+new thread, total running : 32
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+read:1 write:1
+1244 ops/sec 4 MB/sec
+1205 ops/sec 4 MB/sec
+1211 ops/sec 4 MB/sec
+1223 ops/sec 4 MB/sec
+1220 ops/sec 4 MB/sec
+1220 ops/sec 4 MB/sec
+1232 ops/sec 4 MB/sec
+1238 ops/sec 4 MB/sec
+1240 ops/sec 4 MB/sec
+1244 ops/sec 4 MB/sec
+1200 ops/sec 4 MB/sec
+1204 ops/sec 4 MB/sec
+1204 ops/sec 4 MB/sec
+1086 ops/sec 4 MB/sec
+1240 ops/sec 4 MB/sec
+1212 ops/sec 4 MB/sec
+1222 ops/sec 4 MB/sec
+1238 ops/sec 4 MB/sec
+1208 ops/sec 4 MB/sec
+1238 ops/sec 4 MB/sec
+1231 ops/sec 4 MB/sec
+1235 ops/sec 4 MB/sec
+1207 ops/sec 4 MB/sec
+1235 ops/sec 4 MB/sec
+1226 ops/sec 4 MB/sec
+1225 ops/sec 4 MB/sec
+1183 ops/sec 4 MB/sec
+1230 ops/sec 4 MB/sec
+1216 ops/sec 4 MB/sec
+1232 ops/sec 4 MB/sec
+1214 ops/sec 4 MB/sec
+1240 ops/sec 4 MB/sec
+1232 ops/sec 4 MB/sec
+1222 ops/sec 4 MB/sec
+1230 ops/sec 4 MB/sec
+1217 ops/sec 4 MB/sec
+1233 ops/sec 4 MB/sec
+1210 ops/sec 4 MB/sec
+1247 ops/sec 4 MB/sec
+1225 ops/sec 4 MB/sec
+1214 ops/sec 4 MB/sec
+1219 ops/sec 4 MB/sec
+1238 ops/sec 4 MB/sec
+1116 ops/sec 4 MB/sec
+1219 ops/sec 4 MB/sec
+1203 ops/sec 4 MB/sec
+1182 ops/sec 4 MB/sec
+1208 ops/sec 4 MB/sec
+1189 ops/sec 4 MB/sec
+1224 ops/sec 4 MB/sec
+1194 ops/sec 4 MB/sec
+1196 ops/sec 4 MB/sec
+1084 ops/sec 4 MB/sec
+1038 ops/sec 4 MB/sec
+1221 ops/sec 4 MB/sec
+1175 ops/sec 4 MB/sec
+1196 ops/sec 4 MB/sec
+1227 ops/sec 4 MB/sec
+1238 ops/sec 4 MB/sec
+1221 ops/sec 4 MB/sec
+1218 ops/sec 4 MB/sec
+1218 ops/sec 4 MB/sec
+1198 ops/sec 4 MB/sec
+1228 ops/sec 4 MB/sec
+1220 ops/sec 4 MB/sec
+1210 ops/sec 4 MB/sec
+1234 ops/sec 4 MB/sec
+1238 ops/sec 4 MB/sec
+1218 ops/sec 4 MB/sec
+1231 ops/sec 4 MB/sec
+1215 ops/sec 4 MB/sec
+1230 ops/sec 4 MB/sec
+1236 ops/sec 4 MB/sec
+1116 ops/sec 4 MB/sec
+1218 ops/sec 4 MB/sec
+1235 ops/sec 4 MB/sec
+1070 ops/sec 4 MB/sec
+1217 ops/sec 4 MB/sec
+1242 ops/sec 4 MB/sec
+1224 ops/sec 4 MB/sec
+1211 ops/sec 4 MB/sec
+1241 ops/sec 4 MB/sec
+1243 ops/sec 4 MB/sec
+1229 ops/sec 4 MB/sec
+1240 ops/sec 4 MB/sec
+1244 ops/sec 4 MB/sec
+1254 ops/sec 4 MB/sec
+1212 ops/sec 4 MB/sec
+1242 ops/sec 4 MB/sec
