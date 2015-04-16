@@ -63,11 +63,12 @@ def insert_comment(comment):
 		{ '_id': { 'discussion_id': comment['discussion_id'], 'page': page } },
 		{ '$push': {
 		  	'comments': {
-		  		'$each': [ {
-		  			'author': comment['author'],
+		  		'$each': [
+            { 'author': comment['author'],
 		      		'text'  : comment['text'],
-		      		'ts'    : datetime.now() } ],
-		      	'$position': 0
+		      		'ts'    : datetime.now() }
+          ],
+		      '$position': 0
 		    }
 		  }
 		},
