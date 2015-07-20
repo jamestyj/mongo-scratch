@@ -8,8 +8,8 @@ var Generator = function() {
     this.setDefaults = function() {
         if (typeof THREADS    === 'undefined') THREADS    = 4;
         if (typeof BATCH_SIZE === 'undefined') BATCH_SIZE = 2000;
-        if (typeof COUNT      === 'undefined') COUNT      = 1000;
-        if (typeof COLL_NAME  === 'undefined') COLL_NAME  = 'temp';
+        if (typeof COUNT      === 'undefined') COUNT      = 100;
+        if (typeof COLL_NAME  === 'undefined') COLL_NAME  = 'items';
         print('THREADS    =', THREADS);
         print('BATCH_SIZE =', BATCH_SIZE);
         print('COUNT      =', COUNT);
@@ -71,7 +71,7 @@ var Generator = function() {
             for (var j=0; j<batch; j++) {
                 a = this.randomStr(8);
                 b = this.randomStr(8);
-                docs.push({ k: [a,b], ks: this.makeSuffixes([a,b]) });
+                docs.push({ keys: [a,b], suffixes: this.makeSuffixes([a,b]) });
             }
             db[collection_name].insert(docs);
         }
@@ -127,8 +127,8 @@ var Generator = function() {
     this.enableThreading();
     this.setDefaults();
     this.generateDocs();
-    this.createIndex(COLL_NAME, { k:  1 });
-    this.createIndex(COLL_NAME, { ks: 1 });
+    this.createIndex(COLL_NAME, { keys:     1 });
+    this.createIndex(COLL_NAME, { suffixes: 1 });
 };
 
 new Generator();
